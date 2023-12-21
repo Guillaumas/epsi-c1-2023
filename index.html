@@ -1,10 +1,70 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <head>
-  <meta charset="UTF-8">
-  <title>Title</title>
+    <meta charset="UTF-8">
+    <title>Application Météo</title>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
+<div id="app">
+    <div class="autocomplete">
+        <input type="text" v-model="search" @input="onInput">
+        <ul v-if="suggestions.length">
+            <li v-for="suggestion in suggestions" :key="suggestion.id" @click="selectCity(suggestion)">
+                {{ suggestion.name }}
+            </li>
+        </ul>
+      <button @click="fetchWeatherData(search)">Rechercher</button>
+    </div>
 
+    <div v-if="weatherData">
+        <h2>Météo actuelle pour {{ weatherData.location.name }}</h2>
+        <p>Température: {{ weatherData.current.temp_c }}°C</p>
+        <p>Condition: {{ weatherData.current.condition.text }}</p>
+        <img :src="weatherData.current.condition.icon" :alt="weatherData.current.condition.text">
+
+        <h2>Prévisions météo pour les 3 prochains jours</h2>
+        <div v-for="day in weatherData.forecast.forecastday" :key="day.date">
+        <h3>{{ day.date }}</h3>
+        <p>Température maximale: {{ day.day.maxtemp_c }}°C</p>
+        <p>Température minimale: {{ day.day.mintemp_c }}°C</p>
+        <p>Condition: {{ day.day.condition.text }}</p>
+        <img :src="day.day.condition.icon" :alt="day.day.condition.text">
+        </div>
+    </div>
+</div>
+
+<script>
+    new Vue({
+        el: '#app',
+        data: {
+            search: '',
+            suggestions: [],
+            weatherData: null
+        },
+        methods: {
+            onInput() {
+              "todo :appel api geo db pour l'auto completion de ville'"
+            },
+            selectCity(suggestion) {
+                this.search = suggestion.name;
+                this.suggestions = [];
+                this.fetchWeatherData(suggestion.name);
+            },
+            fetchWeatherData(city) {
+              api_key = '0cadf93c867b4bc39b9130433232112';
+                axios.get('http://api.weatherapi.com/v1/forecast.json?key=' + api_key + '&q=' + city + '&days=3' + '&lang=fr')
+                    .then(response => {
+                    this.weatherData = response.data;
+                    })
+                    .catch(error => {
+                    console.log(error);
+                    });
+            }
+        }
+    });
+</script>
 </body>
 </html>
