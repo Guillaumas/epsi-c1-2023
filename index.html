@@ -10,19 +10,19 @@
 <body>
 <div id="app">
     <div class="autocomplete">
-        <input type="text" v-model="search" @input="fetchSuggestions" style="background-color: red">
+        <input type="text" v-model="search" @input="fetchCitySuggestions" style="background-color: red">
         <ul v-if="suggestions.length">
             <li v-for="suggestion in suggestions" :key="suggestion.id" @click="selectCity(suggestion)">
                 {{ suggestion.name }}
             </li>
         </ul>
-        <input type="text" v-model="countrySearch" @input="onCountryInput" style="background-color: blue">
+        <input type="text" v-model="countrySearch" @input="fetchCountrySuggestions" style="background-color: blue">
         <select v-model="selectedCountry" v-if="countrySuggestions.length">
             <option v-for="suggestion in countrySuggestions" :key="suggestion.id" @click="selectCountry(suggestion)">
                 {{ suggestion.name }}
             </option>
         </select>
-      <button @click="fetchWeatherData(search)">Rechercher</button>
+        <button @click="fetchWeatherData(search)">Rechercher</button>
     </div>
 
     <div v-if="weatherData">
@@ -51,31 +51,45 @@
             weatherData: null,
             countrySearch: '',
             countrySuggestions: [],
-            selectedCountry: 'FR'
+            selectedCountry: 'FR',
+            timeout: null
         },
         methods: {
-            fetchSuggestions() {
+            fetchCitySuggestions() {
                 clearTimeout(this.timeout);
                 this.timeout = setTimeout(() => {
-                    this.fetchSuggestions();
-                }, 1000);
-                if (!this.search || this.search.length < 2) {
-                    this.suggestions = [];
-                    return;
-                }
-
-                axios.get(`http://geodb-free-service.wirefreethought.com//v1/geo/countries/${codePays}/places?limit=5&offset=0&types=CITY&namePrefix=${this.search}&languageCode=fr`)
-                    .then(response => {
-                        this.suggestions = response.data.data.map(city => {
-                            return {
-                                name: city.name,
-                                id: city.id
-                            }
+                    if (!this.search || this.search.length < 2) {
+                        this.suggestions = [];
+                        return;
+                    }
+                    axios.get(`http://geodb-free-service.wirefreethought.com/v1/geo/cities?limit=10&offset=0&namePrefix=${this.search}&languageCode=fr&countryIds=${this.selectedCountry}`)
+                        .then(response => {
+                            this.suggestions = response.data.data.map(city => {
+                                return { name: city.name, id: city.id };
+                            });
                         })
-                    })
-                    .catch(error => {
-                        console.error('Erreur de l\'API GeoDB Cities:', error);
-                    });
+                        .catch(error => {
+                            console.error('Erreur de l\'API GeoDB Cities:', error);
+                        });
+                }, 1000);
+            },
+            fetchCountrySuggestions() {
+                clearTimeout(this.timeout);
+                this.timeout = setTimeout(() => {
+                    if (!this.countrySearch || this.countrySearch.length < 2) {
+                        this.countrySuggestions = [];
+                        return;
+                    }
+                    axios.get(`http://geodb-free-service.wirefreethought.com/v1/geo/countries?limit=5&namePrefix=${this.countrySearch}`)
+                        .then(response => {
+                            this.countrySuggestions = response.data.data.map(country => {
+                                return { name: country.name, code: country.code };
+                            });
+                        })
+                        .catch(error => {
+                            console.error('Erreur de l\'API GeoDB Countries:', error);
+                        });
+                }, 1000);
             },
             selectCity(suggestion) {
                 this.search = suggestion.name;
@@ -83,42 +97,27 @@
                 this.fetchWeatherData(suggestion.name);
             },
             fetchWeatherData(city) {
-              api_key = '0cadf93c867b4bc39b9130433232112';
-                axios.get('http://api.weatherapi.com/v1/forecast.json?key=' + api_key + '&q=' + city + '&days=3' + '&lang=fr')
+                const api_key = '0cadf93c867b4bc39b9130433232112';
+                axios.get(`http://api.weatherapi.com/v1/forecast.json?key=${api_key}&q=${city}&days=3&lang=fr`)
                     .then(response => {
-                    this.weatherData = response.data;
+                        this.weatherData = response.data;
                     })
                     .catch(error => {
-                    console.log(error);
-                    });
-            },
-            onCountryInput() {
-                clearTimeout(this.timeout);
-                this.timeout = setTimeout(() => {
-                    this.fetchSuggestions();
-                }, 1000);
-                if (!this.countrySearch || this.countrySearch.length < 2) {
-                    this.countrySuggestions = [];
-                    return;
-                }
-                axios.get(`http://geodb-free-service.wirefreethought.com/v1/geo/countries?namePrefix=fr${this.countrySearch}`)
-                    .then(response => {
-                        this.countrySuggestions = response.data.data.map(country => {
-                            return {
-                                name: country.name,
-                                code: country.code
-                            }
-                        });
-                        console.log(this.countrySuggestions);
-                    })
-                    .catch(error => {
-                        console.error('Erreur de l\'API GeoDB Countries:', error);
+                        console.log(error);
                     });
             },
             selectCountry(suggestion) {
                 this.selectedCountry = suggestion.code;
                 this.countrySuggestions = [];
+            }
+        },
+        watch: {
+            search() {
+                this.fetchCitySuggestions();
             },
+            countrySearch() {
+                this.fetchCountrySuggestions();
+            }
         }
     });
 </script>
