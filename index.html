@@ -46,7 +46,18 @@
         },
         methods: {
             onInput() {
-              "todo :appel api geo db pour l'auto completion de ville'"
+                if (!this.search || this.search.length < 2) {
+                    this.suggestions = [];
+                    return;
+                }
+
+                axios.get(`http://geodb-free-service.wirefreethought.com//v1/geo/countries/${codePays}/places?limit=5&offset=0&types=CITY&namePrefix=${this.search}`)
+                    .then(response => {
+                        this.suggestions = response.data.data;
+                    })
+                    .catch(error => {
+                        console.error('Erreur de l\'API GeoDB Cities:', error);
+                    });
             },
             selectCity(suggestion) {
                 this.search = suggestion.name;
