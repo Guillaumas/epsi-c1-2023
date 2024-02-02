@@ -1,0 +1,22 @@
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f0f0f0;
+}
+
+#app {
+    background-color: #fff;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+
+.autocomplete ul {
+    list-style-type: none;
+    padding-left: 0;
+}
+
+.autocomplete li {
+    cursor: pointer;
+}
+
+.autocomplete li:hover {
+    background-color: #f0f0f0;
+}

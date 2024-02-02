@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Application Météo</title>
+    <script src="https://unpkg.com/vue@next"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app" class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="autocomplete mb-4">
+                <input type="text" class="form-control mb-2" v-model="search" @input="fetchCitySuggestions"
+                       placeholder="Recherche de ville">
+                <ul class="list-group" v-if="suggestions.length">
+                    <li class="list-group-item" v-for="suggestion in suggestions" :key="suggestion.id"
+                        @click="selectCity(suggestion)">
+                        {{ suggestion.name }}
+                    </li>
+                </ul>
+
+                <div class="form-check mt-3">
+                    <input type="checkbox" class="form-check-input" id="countrySearchEnabled"
+                           v-model="countrySearchEnabled" @change="resetCountrySearch">
+                    <label class="form-check-label" for="countrySearchEnabled">Pays != France ?</label>
+                </div>
+
+                <input type="text" class="form-control mt-2" v-model="countrySearch" @input="fetchCountrySuggestions"
+                       v-if="countrySearchEnabled" placeholder="Recherche de pays">
+                <ul class="list-group" v-if="countrySuggestions.length && countrySearchEnabled">
+                    <li class="list-group-item" v-for="suggestion in countrySuggestions" :key="suggestion.id"
+                        @click="selectCountry(suggestion)">
+                        {{ suggestion.name }}
+                    </li>
+                </ul>
+
+                <button class="btn btn-primary mt-3" @click="fetchWeatherData(search)" :disabled="!search">Rechercher
+                </button>
+            </div>
+
+            <div v-if="weatherData">
+                <div class="card mt-2" v-for="day in weatherData.forecast.forecastday" :key="day.date">
+                    <div class="card-header">
+                        {{ day.date }}
+                    </div>
+                    <div class="card-body">
+                        <h5 class="card-title">Température maximale: {{ day.day.maxtemp_c }}°C</h5>
+                        <h6 class="card-subtitle mb-2 text-muted">Température minimale: {{ day.day.mintemp_c }}°C</h6>
+                        <p class="card-text">Condition: {{ day.day.condition.text }}</p>
+                        <img :src="day.day.condition.icon" :alt="day.day.condition.text">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://unpkg.com/vue@3"></script>
+<script>
+    var app = Vue.createApp({
+        data() {
+            return {
+                search: '',
+                suggestions: [],
+                weatherData: null,
+                countrySearch: '',
+                countrySuggestions: [],
+                selectedCountry: 'FR',
+                timeout: null,
+                countrySearchEnabled: false
+            }
+        },
+        methods: {
+            async fetchCitySuggestions() {
+                clearTimeout(this.timeout);
+                this.timeout = setTimeout(async () => {
+                    if (!this.search || this.search.length < 2) {
+                        this.suggestions = [];
+                        return;
+                    }
+                    try {
+                        const response = await axios.get(`http://geodb-free-service.wirefreethought.com/v1/geo/cities?limit=10&offset=0&namePrefix=${this.search}&languageCode=fr&countryIds=${this.selectedCountry}`);
+                        this.suggestions = response.data.data.map(city => {
+                            return {name: city.name, id: city.id};
+                        });
+                    } catch (error) {
+                        console.error('Erreur de l\'API GeoDB Cities:', error);
+                    }
+                }, 1000);
+            },
+            async fetchCountrySuggestions() {
+                if (!this.countrySearchEnabled) return;
+                clearTimeout(this.timeout);
+                this.timeout = setTimeout(async () => {
+                    if (!this.countrySearch || this.countrySearch.length < 2) {
+                        this.countrySuggestions = [];
+                        return;
+                    }
+                    try {
+                        const response = await axios.get(`http://geodb-free-service.wirefreethought.com/v1/geo/countries?limit=5&namePrefix=${this.countrySearch}&languageCode=fr`);
+                        this.countrySuggestions = response.data.data.map(country => {
+                            return { name: country.name, code: country.code };
+                        });
+                    } catch (error) {
+                        console.error('Erreur de l\'API GeoDB Countries:', error);
+                    }
+                }, 1000);
+            },
+            selectCity(suggestion) {
+                this.search = suggestion.name;
+                this.suggestions = [];
+                this.fetchWeatherData(suggestion.name);
+            },
+            async fetchWeatherData(city) {
+                const api_key = '0cadf93c867b4bc39b9130433232112';
+                try {
+                    const response = await axios.get(`http://api.weatherapi.com/v1/forecast.json?key=${api_key}&q=${city}&days=3&lang=fr`);
+                    this.weatherData = response.data;
+                    this.search = '';
+                    this.countrySearch = '';
+                    this.countrySearchEnabled = false;
+                } catch (error) {
+                    console.log(error);
+                }
+            },
+            selectCountry(suggestion) {
+                this.selectedCountry = suggestion.code;
+                this.countrySuggestions = [];
+                this.countrySearch = '';
+            },
+            resetCountrySearch() {
+                this.countrySearch = '';
+                this.countrySuggestions = [];
+                this.selectedCountry = 'FR';
+            }
+        },
+        watch: {
+            search() {
+                this.fetchCitySuggestions();
+            },
+            countrySearch() {
+                this.fetchCountrySuggestions();
+            }
+        }
+    }).mount('#app');
+</script>
+</body>
+</html>
